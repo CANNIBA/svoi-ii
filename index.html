@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Свой ИИ — нейросети без подписки</title>
+<meta name="description" content="Канал «Свой ИИ»: бесплатные опенсорс-нейросети, которые работают на вашем компьютере. Как запустить, как ускорить и как ими пользоваться.">
+<meta property="og:title" content="Свой ИИ — нейросети без подписки">
+<meta property="og:description" content="Бесплатно · на вашем компьютере · без VPN">
+<meta property="og:image" content="img/banner.png">
+<link rel="icon" href="img/avatar.png">
+<script>
+  // Тема ставится до отрисовки страницы, чтобы не мигало
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="logo" href="#top" aria-label="Свой ИИ — в начало">
+      <span class="logo-mark"><b>&gt;</b>ИИ<i>_</i></span>
+      <span class="logo-name">Свой ИИ</span>
+    </a>
+    <nav class="nav" aria-label="Разделы">
+      <a href="#start">Запуск</a>
+      <a href="#speed">Ускорение</a>
+      <a href="#use">Советы</a>
+      <a href="#bot">Бот</a>
+      <a href="#contact">Контакты</a>
+    </nav>
+    <button class="theme" id="theme" type="button" aria-label="Переключить светлую и тёмную тему" title="Светлая / тёмная тема">
+      <svg class="i-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="i-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===== Первый экран ===== -->
+  <section class="hero">
+    <div class="wrap hero-in">
+      <div class="hero-text">
+        <p class="kicker">Telegram-канал · опенсорс-нейросети</p>
+        <h1>Нейросети <span class="accent">без подписки</span></h1>
+        <p class="lead">Почти у каждого платного ИИ-сервиса есть открытый аналог, который работает прямо на вашем компьютере. Бесплатно, без VPN, и ваши файлы никуда не уходят.</p>
+        <div class="actions">
+          <a class="btn btn-main" href="https://t.me/svoi_neuro" target="_blank" rel="noopener">Открыть канал в Telegram</a>
+          <a class="btn" href="#start">Как запустить</a>
+        </div>
+      </div>
+
+      <div class="term" aria-label="Пример: запуск нейросети одной командой">
+        <div class="term-bar"><span></span><span></span><span></span><em>терминал</em></div>
+        <pre class="term-body"><span class="p">&gt;</span> ollama run gemma3
+<span class="dim">скачиваю модель… готово</span>
+
+<span class="p">&gt;&gt;&gt;</span> Объясни простыми словами, что такое нейросеть
+<span class="out">Это программа, которая учится на примерах:
+ей показывают много текстов, и она запоминает,
+какие слова обычно идут друг за другом.</span><span class="cur">_</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Чем заменить платное ===== -->
+  <section class="sec">
+    <div class="wrap">
+      <h2>Чем заменить платные сервисы</h2>
+      <p class="sub">Четыре самые частые задачи и бесплатные программы для них.</p>
+      <div class="swap">
+        <article class="card">
+          <p class="card-from">Чат-бот</p>
+          <h3>Ollama</h3>
+          <p>Открытые языковые модели: отвечают на вопросы, пишут и правят тексты, помогают с кодом.</p>
+          <a href="https://ollama.com" target="_blank" rel="noopener">ollama.com</a>
+        </article>
+        <article class="card">
+          <p class="card-from">Картинки</p>
+          <h3>ComfyUI</h3>
+          <p>Рисует изображения по описанию на моделях Stable Diffusion и FLUX. Нужна видеокарта.</p>
+          <a href="https://www.comfy.org" target="_blank" rel="noopener">comfy.org</a>
+        </article>
+        <article class="card">
+          <p class="card-from">Расшифровка аудио</p>
+          <h3>Whisper</h3>
+          <p>Превращает запись голоса, лекции или созвона в текст. Понимает русский.</p>
+          <a href="https://github.com/openai/whisper" target="_blank" rel="noopener">github.com/openai/whisper</a>
+        </article>
+        <article class="card">
+          <p class="card-from">Озвучка текста</p>
+          <h3>Piper</h3>
+          <p>Читает текст вслух естественным голосом. Лёгкая, работает даже на слабом компьютере.</p>
+          <a href="https://github.com/rhasspy/piper" target="_blank" rel="noopener">github.com/rhasspy/piper</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Запуск ===== -->
+  <section class="sec alt" id="start">
+    <div class="wrap">
+      <h2>Как запустить первую нейросеть</h2>
+      <p class="sub">Три шага, около десяти минут. Программировать не нужно.</p>
+
+      <ol class="steps">
+        <li>
+          <h3>Установите Ollama</h3>
+          <p>Скачайте программу с <a href="https://ollama.com" target="_blank" rel="noopener">ollama.com</a> и установите как обычно — «Далее, далее, готово».</p>
+        </li>
+        <li>
+          <h3>Откройте терминал</h3>
+          <p>Это окно, куда команды вводят текстом. В Windows: нажмите «Пуск», наберите <code>cmd</code> и нажмите Enter. На Mac: Cmd + Пробел, наберите «Терминал».</p>
+        </li>
+        <li>
+          <h3>Введите одну команду</h3>
+          <p>Скопируйте её, вставьте в окно и нажмите Enter. Модель скачается, и сразу откроется чат.</p>
+          <div class="cmd"><code>ollama run gemma3</code><button type="button" class="copy" data-copy="ollama run gemma3">Скопировать</button></div>
+          <p class="note">Выйти из чата — напишите <code>/bye</code>.</p>
+        </li>
+      </ol>
+
+      <div class="tip">
+        <strong>Не хотите терминал?</strong> Поставьте <a href="https://lmstudio.ai" target="_blank" rel="noopener">LM Studio</a>: там поиск моделей и чат в обычном окне с кнопками.
+      </div>
+
+      <h3 class="h3-gap">Если в посте ссылка на GitHub</h3>
+      <p class="sub">Откройте её и ищите способ установки в таком порядке — от простого к сложному.</p>
+      <div class="ways">
+        <div class="way">
+          <span class="way-n">1</span>
+          <h4>Releases</h4>
+          <p>Раздел справа на странице. Если там есть установщик для вашей системы — качайте его, это самый простой путь.</p>
+        </div>
+        <div class="way">
+          <span class="way-n">2</span>
+          <h4>Docker</h4>
+          <p>Если в описании есть эта команда, поставьте Docker Desktop и выполните её в папке проекта.</p>
+          <div class="cmd"><code>docker compose up</code><button type="button" class="copy" data-copy="docker compose up">Скопировать</button></div>
+        </div>
+        <div class="way">
+          <span class="way-n">3</span>
+          <h4>Python</h4>
+          <p>Если нет ни того, ни другого. Нужны Git и Python; команды вводятся по одной.</p>
+          <div class="cmd cmd-multi"><code>git clone ссылка-на-репозиторий
+cd папка-проекта
+pip install -r requirements.txt</code></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Ускорение ===== -->
+  <section class="sec" id="speed">
+    <div class="wrap">
+      <h2>Как сделать, чтобы работало быстро</h2>
+      <p class="sub">Скорость зависит от одного: помещается ли модель в память целиком.</p>
+
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr><th>Что у вас есть</th><th>Что потянет</th><th>Пример</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>8 ГБ оперативной памяти</td><td>Маленькие модели, до 4B</td><td><code>gemma3:4b</code></td></tr>
+            <tr><td>16 ГБ оперативной памяти</td><td>Средние модели, 7–8B — хватает для большинства задач</td><td><code>qwen3:8b</code></td></tr>
+            <tr><td>Видеокарта с 8+ ГБ памяти</td><td>То же самое, но в разы быстрее. Для картинок и видео почти обязательна</td><td><code>gemma3:12b</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Буква B в названии — миллиарды параметров: чем больше число, тем модель умнее и тяжелее.</p>
+
+      <div class="tips">
+        <article class="card">
+          <h3>Берите модель по размеру</h3>
+          <p>Файл модели должен быть на пару гигабайт меньше свободной памяти. Если не помещается — компьютер начинает использовать диск, и ответ идёт по слову в несколько секунд.</p>
+        </article>
+        <article class="card">
+          <h3>Проверьте, работает ли видеокарта</h3>
+          <p>Пока модель запущена, откройте второй терминал и введите команду. «100% GPU» — всё хорошо. Если часть на CPU — возьмите модель поменьше.</p>
+          <div class="cmd"><code>ollama ps</code><button type="button" class="copy" data-copy="ollama ps">Скопировать</button></div>
+        </article>
+        <article class="card">
+          <h3>Сжатые версии — это нормально</h3>
+          <p>Пометки вроде Q4 в названии означают сжатие. Q4 — обычный выбор: модель вдвое-втрое легче, а качество почти то же. Ниже Q4 — заметно глупеет.</p>
+        </article>
+        <article class="card">
+          <h3>Новая тема — новый чат</h3>
+          <p>Модель каждый раз перечитывает весь разговор. Чем длиннее переписка, тем медленнее ответы и тем чаще она путается.</p>
+        </article>
+        <article class="card">
+          <h3>Освободите память</h3>
+          <p>Закройте игры и лишние вкладки браузера — они занимают ту же память, что нужна модели.</p>
+        </article>
+        <article class="card">
+          <h3>Простой задаче — маленькая модель</h3>
+          <p>Исправить опечатки или пересказать абзац маленькая модель сможет так же хорошо, но ответит в несколько раз быстрее.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Как пользоваться ===== -->
+  <section class="sec alt" id="use">
+    <div class="wrap">
+      <h2>Как получать хорошие ответы</h2>
+      <p class="sub">Локальные модели слабее больших платных, поэтому им особенно важно понятное задание.</p>
+
+      <div class="compare">
+        <div class="bubble bad">
+          <p class="bubble-tag">Так себе</p>
+          <p>Напиши про кофе</p>
+        </div>
+        <div class="bubble good">
+          <p class="bubble-tag">Гораздо лучше</p>
+          <p>Ты бариста. Объясни новичку, чем арабика отличается от робусты. 5 коротких пунктов, без терминов.</p>
+        </div>
+      </div>
+
+      <ul class="rules">
+        <li><strong>Скажите, для кого и зачем.</strong> «Письмо арендодателю, вежливо, но твёрдо» лучше, чем просто «письмо».</li>
+        <li><strong>Задайте форму ответа.</strong> Список, таблица, три предложения — модель послушается.</li>
+        <li><strong>Покажите пример.</strong> Один образец нужного результата заменяет абзац объяснений.</li>
+        <li><strong>Делите большое на части.</strong> Сначала план, потом каждый пункт отдельно.</li>
+        <li><strong>Проверяйте факты.</strong> Нейросеть может уверенно выдумать дату, цитату или ссылку.</li>
+      </ul>
+
+      <h3 class="h3-gap">Если что-то пошло не так</h3>
+      <div class="faq">
+        <details>
+          <summary>«Не является внутренней или внешней командой»</summary>
+          <p>Программа не установлена, или терминал был открыт до её установки. Закройте окно терминала и откройте заново.</p>
+        </details>
+        <details>
+          <summary>Появился красный текст с ошибкой</summary>
+          <p>Скопируйте его целиком и вставьте в поиск или в любую нейросеть — почти всегда решение находится за минуту.</p>
+        </details>
+        <details>
+          <summary>Команда зависла и ничего не происходит</summary>
+          <p>Нажмите Ctrl + C — это останавливает текущую команду. Если шла загрузка модели, просто подождите: файлы весят несколько гигабайт.</p>
+        </details>
+        <details>
+          <summary>Безопасно ли запускать программы с GitHub?</summary>
+          <p>Посмотрите на число звёзд, дату последнего обновления и раздел Issues. Не запускайте установщики из репозиториев, которым несколько дней и у которых нет исходного кода.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Канал и бот ===== -->
+  <section class="sec" id="bot">
+    <div class="wrap">
+      <h2>Как устроен канал</h2>
+      <p class="sub">Новинки ищет бот, а решение о публикации принимает человек.</p>
+
+      <div class="flow">
+        <div class="flow-step">
+          <span class="flow-n">01</span>
+          <h3>Ищет</h3>
+          <p>Бот несколько раз в день просматривает пять площадок и отбирает проекты, которые набирают популярность.</p>
+          <ul class="tags">
+            <li>GitHub</li><li>Hugging Face</li><li>Hacker News</li><li>Reddit</li><li>Хабр</li>
+          </ul>
+        </div>
+        <div class="flow-step">
+          <span class="flow-n">02</span>
+          <h3>Объясняет</h3>
+          <p>Отсеивает лишнее и коротко пишет по-русски: что это за инструмент и зачем он нужен.</p>
+        </div>
+        <div class="flow-step">
+          <span class="flow-n">03</span>
+          <h3>Спрашивает</h3>
+          <p>Присылает черновик автору в личные сообщения с кнопками «В канал» и «Пропустить».</p>
+        </div>
+        <div class="flow-step">
+          <span class="flow-n">04</span>
+          <h3>Публикует</h3>
+          <p>Одобренный пост выходит в канале. Бот помнит, что уже было, и не повторяется.</p>
+        </div>
+      </div>
+
+      <div class="about">
+        <img src="img/avatar.png" alt="Логотип канала «Свой ИИ»" width="96" height="96">
+        <div>
+          <h3>Бот написан с нуля</h3>
+          <p>Программа на Python, работает на обычном домашнем компьютере. Кроме поиска постов, она считает, сколько подписчиков пришло по каждой рекламной ссылке.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Контакты ===== -->
+  <section class="sec cta" id="contact">
+    <div class="wrap cta-in">
+      <h2>Новые бесплатные нейросети — каждый день</h2>
+      <p>В закрепе канала — гайд, как всё запустить, даже если вы ни разу не открывали терминал.</p>
+      <div class="actions">
+        <a class="btn btn-main" href="https://t.me/svoi_neuro" target="_blank" rel="noopener">Подписаться: t.me/svoi_neuro</a>
+        <a class="btn" id="write" href="#" target="_blank" rel="noopener" hidden>Написать автору</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <span class="logo-mark"><b>&gt;</b>ИИ<i>_</i></span>
+    <span>Свой ИИ · бесплатные опенсорс-нейросети</span>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
