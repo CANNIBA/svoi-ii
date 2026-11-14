@@ -30,11 +30,11 @@
       <span class="logo-name">Свой ИИ</span>
     </a>
     <nav class="nav" aria-label="Разделы">
+      <a href="#about">О проекте</a>
       <a href="#start">Запуск</a>
       <a href="#speed">Ускорение</a>
       <a href="#use">Советы</a>
       <a href="#bot">Бот</a>
-      <a href="#contact">Контакты</a>
     </nav>
     <button class="theme" id="theme" type="button" aria-label="Переключить светлую и тёмную тему" title="Светлая / тёмная тема">
       <svg class="i-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
@@ -67,6 +67,31 @@
 <span class="out">Это программа, которая учится на примерах:
 ей показывают много текстов, и она запоминает,
 какие слова обычно идут друг за другом.</span><span class="cur">_</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== О проекте ===== -->
+  <section class="sec alt" id="about">
+    <div class="wrap">
+      <h2>О проекте</h2>
+      <p class="sub">«Свой ИИ» — о том, как упростить работу с нейросетями и поручить им рутину.</p>
+      <div class="flow flow-3">
+        <div class="flow-step">
+          <h3>Проще</h3>
+          <p>Объясняем без терминов: что скачать, куда нажать и какую команду ввести.</p>
+        </div>
+        <div class="flow-step">
+          <h3>Автоматически</h3>
+          <p>Показываем, как нейросеть пересказывает документы, расшифровывает созвоны и готовит черновики без вашего участия.</p>
+        </div>
+        <div class="flow-step">
+          <h3>Бесплатно</h3>
+          <p>Только открытые программы, которые работают на вашем компьютере — без подписок и VPN.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-main" id="guide-bot" href="#" target="_blank" rel="noopener" hidden>Бот-навигатор в Telegram</a>
       </div>
     </div>
   </section>
@@ -172,7 +197,8 @@ pip install -r requirements.txt</code></div>
           <tbody>
             <tr><td>8 ГБ оперативной памяти</td><td>Маленькие модели, до 4B</td><td><code>gemma3:4b</code></td></tr>
             <tr><td>16 ГБ оперативной памяти</td><td>Средние модели, 7–8B — хватает для большинства задач</td><td><code>qwen3:8b</code></td></tr>
-            <tr><td>Видеокарта с 8+ ГБ памяти</td><td>То же самое, но в разы быстрее. Для картинок и видео почти обязательна</td><td><code>gemma3:12b</code></td></tr>
+            <tr><td>Видеокарта с 8 ГБ памяти</td><td>Те же средние модели, но в разы быстрее. Для картинок и видео почти обязательна</td><td><code>qwen3:8b</code></td></tr>
+            <tr><td>Видеокарта с 12+ ГБ памяти</td><td>Модели покрупнее, 12–14B — отвечают заметно умнее</td><td><code>gemma3:12b</code></td></tr>
           </tbody>
         </table>
       </div>

@@ -6,7 +6,22 @@
 // ============================================================
 var AUTHOR_TELEGRAM = "Stesha337";
 
+// ============================================================
+//  НАСТРОЙКА: имя бота-навигатора (то, что заканчивается на bot),
+//  БЕЗ знака @.  Пример:  var GUIDE_BOT = "svoi_neuro_guide_bot";
+//  Пока тут пусто, кнопка «Бот-навигатор» на сайте скрыта.
+// ============================================================
+var GUIDE_BOT = "";
+
 (function () {
+  // --- кнопка «Бот-навигатор» ---
+  var guideBtn = document.getElementById('guide-bot');
+  var botName = GUIDE_BOT.replace(/^@/, '').trim();
+  if (guideBtn && botName) {
+    guideBtn.href = 'https://t.me/' + encodeURIComponent(botName);
+    guideBtn.hidden = false;
+  }
+
   // --- кнопка «Написать автору» ---
   var write = document.getElementById('write');
   var nick = AUTHOR_TELEGRAM.replace(/^@/, '').trim();
