@@ -23,6 +23,8 @@
   .top{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding-top:max(12px,env(safe-area-inset-top,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9aa8b4}
   .val{font-size:22px;font-weight:600}
+  #radar{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:max(64px,calc(env(safe-area-inset-top,0px) + 56px));width:112px;height:112px;border-radius:50%;background:#050a0e99;border:1px solid var(--line)}
+  #hint{position:absolute;left:0;right:0;top:max(48px,calc(env(safe-area-inset-top,0px) + 40px));text-align:center;font-size:12px;color:#9aa8b4;opacity:0;transition:opacity .3s}
   #streak{position:absolute;left:0;right:0;top:12%;text-align:center;font-size:20px;font-weight:700;letter-spacing:.12em;color:var(--gold);opacity:0;transition:opacity .2s}
   #streak small{display:block;font-size:11px;color:#c7a85a;letter-spacing:.2em}
   .bot{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-bottom:max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -41,7 +43,7 @@
   .wb.on{border-color:var(--warm);color:#fff;background:#2a1f0eaa}
   #banner{position:absolute;left:0;right:0;top:24%;text-align:center;font-size:40px;letter-spacing:.2em;text-transform:uppercase;opacity:0;transition:opacity .6s;font-family:Georgia,serif;padding:0 16px}
   #banner small{display:block;font-size:14px;letter-spacing:.14em;color:#9aa8b4;margin-top:8px}
-  #cross{position:fixed;width:26px;height:26px;margin:-13px 0 0 -13px;border:1px solid #e8dcc0aa;border-radius:50%;pointer-events:none;display:none}
+  #cross{position:fixed;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border:1px solid #e8dcc0aa;border-radius:50%;pointer-events:none;display:none}
   #cross::after{content:"";position:absolute;left:11px;top:11px;width:2px;height:2px;background:#e8dcc0}
   .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:#04070acc;overflow:auto}
   .card{max-width:500px;width:100%;background:var(--panel);border:1px solid var(--line);padding:28px;box-shadow:0 0 80px #000}
@@ -86,6 +88,8 @@
     <div><div class="lbl">Волна</div><div class="val" id="wave">1</div></div>
     <div style="text-align:right"><div class="lbl">Убито</div><div class="val" id="kills">0</div></div>
   </div>
+  <canvas id="radar" width="224" height="224"></canvas>
+  <div id="hint">Клик по игре захватывает мышь (Esc отпускает)</div>
   <div id="streak"></div>
   <div id="banner"></div>
   <div class="bot">
@@ -108,9 +112,9 @@
   <div class="card">
     <div class="sub">Кладбище · ночь</div>
     <h1>Туман</h1>
-    <p>Ты сторож заброшенного кладбища. Каждую ночь из леса выходят Тени, и их с каждой волной всё больше. У тебя пистолет, фонарь и лампа в центре.</p>
+    <p>Ты сторож заброшенного кладбища. Вид от третьего лица, Тени могут зайти со спины, смотри на радар. Каждую ночь из леса выходят Тени, и их с каждой волной всё больше. У тебя пистолет, фонарь и лампа в центре.</p>
     <p>После каждой волны выбирай улучшение. Находи новое оружие: у каждого своя прокачка и свои механики. Серия убийств даёт ярость.</p>
-    <div class="keys"><kbd>W A S D</kbd> идти &nbsp; <kbd>Мышь</kbd> целиться &nbsp; <kbd>ЛКМ</kbd> стрелять<br><kbd>Shift</kbd> рывок &nbsp; <kbd>R</kbd> перезарядка &nbsp; <kbd>1–4</kbd> / <kbd>Q</kbd> / колесо оружие<br>Телефон: левый палец ходит, правый целится и стреляет, справа кнопки.</div>
+    <div class="keys"><kbd>W A S D</kbd> идти &nbsp; <kbd>Мышь</kbd> смотреть и целиться (клик захватывает курсор) &nbsp; <kbd>ЛКМ</kbd> стрелять<br><kbd>Shift</kbd> рывок &nbsp; <kbd>R</kbd> перезарядка &nbsp; <kbd>1–4</kbd> / <kbd>Q</kbd> / колесо оружие<br>Телефон: левый палец ходит, правый поворачивает камеру и стреляет, справа кнопки.</div>
     <button id="go">Выйти в туман</button>
   </div>
 </div>
@@ -581,6 +585,8 @@
   const mouse = { x: 0, y: 0, down: false };
   const touch = { L: null, R: null, dash: false };
   let shake = 0, hurt = 0, bannerT = 0;
+  let yaw = Math.PI, pitch = 0, locked = false;
+  const rgt = new THREE.Vector3();
 
   function newState(){
     const st = { hp: 100, maxHp: 100, weapon: 'pistol', reload: 0, reloadMax: 1, fireCd: 0, bloom: 0, kills: 0, wave: 0, spawnLeft: 0, spawnT: 0, breakT: 0.1, waveActive: false, atkAnim: 0, t: 0,
@@ -690,7 +696,8 @@
     S = newState();
     S.w.pistol.mag = wstat('pistol').mag;
     player.position.set(0, 0, 4);
-    camera.position.set(0, 13, 14.5);
+    yaw = Math.PI; pitch = 0; aim.set(Math.sin(yaw), 0, Math.cos(yaw));
+    camera.position.set(0, 3, 10);
     equipGun('pistol');
     hud();
   }
@@ -699,7 +706,8 @@
     resetWorld();
     $('start').classList.add('hidden'); $('end').classList.add('hidden'); $('upg').classList.add('hidden');
     mode = 'play';
-    $('cross').style.display = isTouch ? 'none' : 'block';
+    mouse.x = innerWidth / 2; mouse.y = innerHeight / 2;
+    $('cross').style.display = 'block';
     banner('Ночь первая', 'Держись света');
   }
   function gameOver(){
@@ -774,7 +782,7 @@
     }
     $('upg').classList.add('hidden');
     mode = 'play';
-    $('cross').style.display = isTouch ? 'none' : 'block';
+    $('cross').style.display = 'block';
     S.waveActive = false; S.breakT = 2.5;
     banner(title, sub);
     hud();
@@ -993,8 +1001,21 @@
   });
   addEventListener('keyup', e => { keys[e.code] = false; });
   addEventListener('wheel', e => { if (mode === 'play') cycleWeapon(e.deltaY > 0 ? 1 : -1); }, { passive: true });
-  stage.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; $('cross').style.left = e.clientX + 'px'; $('cross').style.top = e.clientY + 'px'; });
-  stage.addEventListener('mousedown', e => { if (e.button === 0) { mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY; } });
+  document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === renderer.domElement; });
+  document.addEventListener('mousemove', e => {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    if (locked && mode === 'play') {
+      yaw -= e.movementX * 0.0024;
+      pitch = Math.max(-0.25, Math.min(0.25, pitch - e.movementY * 0.0016));
+    }
+  });
+  stage.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY;
+    if (!isTouch && mode === 'play' && !locked) {
+      try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (err) {}
+    }
+  });
   addEventListener('mouseup', () => { mouse.down = false; });
   addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('blur', () => { mouse.down = false; for (const k in keys) keys[k] = false; });
@@ -1047,6 +1068,7 @@
   addEventListener('resize', resize);
   resize();
 
+  const radarCtx = $('radar').getContext('2d');
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1);
@@ -1061,12 +1083,25 @@
   if (HASH.indexOf('debug') >= 0) {
     window.__fog = {
       killAll(){ enemies.forEach(e => damageEnemy(e, 9999)); },
-      state(){ return { mode, wave: S.wave, hp: S.hp, kills: S.kills, weapon: S.weapon, enemies: enemies.length, alive: enemies.filter(e => !e.userData.dead).length, spawnLeft: S.spawnLeft, streak: S.streak, up: S.up, wup: S.wup }; },
+      state(){ return { yaw, locked, mode, wave: S.wave, hp: S.hp, kills: S.kills, weapon: S.weapon, enemies: enemies.length, alive: enemies.filter(e => !e.userData.dead).length, spawnLeft: S.spawnLeft, streak: S.streak, up: S.up, wup: S.wup }; },
       give(id, n){ S.up[id] = n; hud(); },
       wgive(w, id, n){ S.wup[w][id] = n; hud(); },
       unlock(id){ unlockWeapon(id); hud(); },
       swap(id){ switchWeapon(id); },
       setWave(n){ S.wave = n; hud(); },
+      setYaw(a){ yaw = a; },
+      spawnAhead(dist){
+        const e = makeEnemy('walker');
+        e.position.set(player.position.x + aim.x * dist, 0, player.position.z + aim.z * dist);
+        scene.add(e); enemies.push(e);
+        return [e.position.x, e.position.z];
+      },
+      faceNearest(){
+        let best = null, bd = 1e9;
+        enemies.forEach(e => { if (e.userData.dead) return; const d = Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z); if (d < bd) { bd = d; best = e; } });
+        if (best) yaw = Math.atan2(best.position.x - player.position.x, best.position.z - player.position.z);
+        return !!best;
+      },
       nearestScreen(){
         let best = null, bd = 1e9;
         enemies.forEach(e => { if (e.userData.dead) return; const d = Math.hypot(e.position.x - player.position.x, e.position.z - player.position.z); if (d < bd) { bd = d; best = e; } });
@@ -1100,11 +1135,24 @@
 
     if (mode === 'play') {
       S.t += dt;
-      let mx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+      // Обзор: мышь (с захватом), стрелки или правый стик
+      yaw += ((keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0)) * 2.2 * dt;
+      if (touch.R) {
+        yaw -= (touch.R.dx || 0) * 3.4 * dt;
+        pitch = Math.max(-0.25, Math.min(0.25, pitch - (touch.R.dy || 0) * 0.8 * dt));
+      } else if (!isTouch && !locked) {
+        const nx = (mouse.x - innerWidth / 2) / (innerWidth / 2);
+        if (Math.abs(nx) > 0.2) yaw -= nx * 2.4 * dt;
+      }
+      aim.set(Math.sin(yaw), 0, Math.cos(yaw));
+      rgt.set(-aim.z, 0, aim.x);
+
+      let mx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
       let mz = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0);
       if (touch.L) { mx = touch.L.dx || 0; mz = touch.L.dy || 0; }
       const ml = Math.hypot(mx, mz);
       if (ml > 1) { mx /= ml; mz /= ml; }
+      { const lx = mx, lz = mz; mx = rgt.x * lx - aim.x * lz; mz = rgt.z * lx - aim.z * lz; }
 
       S.dashCd = Math.max(0, S.dashCd - dt); S.inv = Math.max(0, S.inv - dt);
       if (keys.ShiftLeft || keys.ShiftRight || touch.dash) { startDash(ml, mx, mz); touch.dash = false; }
@@ -1134,18 +1182,8 @@
       pushOut(player.position, 0.4);
 
       let firing = false;
-      if (touch.R && Math.hypot(touch.R.dx || 0, touch.R.dy || 0) > 0.25) {
-        aim.set(touch.R.dx, 0, touch.R.dy).normalize(); firing = true;
-      } else if (!isTouch) {
-        ndc.set(mouse.x / innerWidth * 2 - 1, -(mouse.y / innerHeight) * 2 + 1);
-        camera.updateMatrixWorld();
-        ray.setFromCamera(ndc, camera);
-        if (ray.ray.intersectPlane(plane, hitPt)) {
-          const dx = hitPt.x - player.position.x, dz = hitPt.z - player.position.z;
-          if (Math.hypot(dx, dz) > 0.4) aim.set(dx, 0, dz).normalize();
-        }
-        firing = mouse.down || keys.Space;
-      }
+      if (touch.R && Math.hypot(touch.R.dx || 0, touch.R.dy || 0) > 0.25) firing = true;
+      else if (!isTouch) firing = mouse.down || keys.Space;
       player.rotation.y = Math.atan2(aim.x, aim.z);
       const moving = ml > 0.1 || S.dashT > 0;
       if (playerModel) setPAnim(moving ? 'Run' : 'Idle', moving ? (S.dashT > 0 ? 1.7 : Math.max(0.7, speedVal() / 6.2)) : 1);
@@ -1302,10 +1340,46 @@
     }
 
     shake = Math.max(0, shake - dt * 1.5);
-    tmp.set(player.position.x + aim.x * 1.4, 13, player.position.z + 10.5 + aim.z * 1.0);
-    camera.position.lerp(tmp, Math.min(1, dt * 5));
-    camera.lookAt(camera.position.x, 0.8, camera.position.z - 10.5);
-    if (shake > 0) { camera.position.x += (Math.random() - 0.5) * shake; camera.position.z += (Math.random() - 0.5) * shake; }
+    {
+      // Камера за плечом: ближе, если мешает дерево или надгробие
+      let cdist = 5.6;
+      const camY = 2.7 - pitch * 3;
+      const sh = 0.9;
+      const rx = -aim.z, rz = aim.x;
+      for (const dtry of [5.6, 4.2, 3.0, 2.0]) {
+        cdist = dtry;
+        const cx = player.position.x - aim.x * dtry + rx * sh, cz = player.position.z - aim.z * dtry + rz * sh;
+        let clear = true;
+        for (const o of obstacles) { if (Math.hypot(cx - o.x, cz - o.z) < o.r + 0.6) { clear = false; break; } }
+        if (clear) break;
+      }
+      tmp.set(player.position.x - aim.x * cdist + rx * sh, camY, player.position.z - aim.z * cdist + rz * sh);
+      camera.position.lerp(tmp, 1 - Math.exp(-16 * dt));
+      camera.lookAt(player.position.x + aim.x * 20, 1.5 + pitch * 14, player.position.z + aim.z * 20);
+      if (shake > 0) { camera.position.x += (Math.random() - 0.5) * shake * 0.5; camera.position.y += (Math.random() - 0.5) * shake * 0.4; }
+    }
+
+    // Радар и подсказка
+    if (mode === 'play') {
+      const rc = radarCtx, R = 112;
+      rc.clearRect(0, 0, R * 2, R * 2);
+      rc.fillStyle = 'rgba(120,150,170,0.18)';
+      rc.beginPath(); rc.moveTo(R, R); rc.arc(R, R, R - 4, -Math.PI / 2 - 0.55, -Math.PI / 2 + 0.55); rc.closePath(); rc.fill();
+      rc.strokeStyle = 'rgba(120,150,170,0.25)'; rc.beginPath(); rc.arc(R, R, R / 2, 0, 6.3); rc.stroke();
+      const sc = (R - 8) / 28;
+      for (const e of enemies) {
+        if (e.userData.dead) continue;
+        const dx = e.position.x - player.position.x, dz = e.position.z - player.position.z;
+        const fwd = dx * aim.x + dz * aim.z, rt = dx * rgt.x + dz * rgt.z;
+        let px = rt * sc, py = -fwd * sc;
+        const l = Math.hypot(px, py), lim = R - 6;
+        if (l > lim) { px *= lim / l; py *= lim / l; }
+        rc.fillStyle = e.userData.type === 'brute' ? '#ff8a4a' : (e.userData.type === 'runner' ? '#ffb347' : '#ff4a4a');
+        rc.beginPath(); rc.arc(R + px, R + py, e.userData.type === 'brute' ? 7 : 4.5, 0, 6.3); rc.fill();
+      }
+      rc.fillStyle = '#e8f1f8'; rc.beginPath(); rc.moveTo(R, R - 9); rc.lineTo(R - 6, R + 6); rc.lineTo(R + 6, R + 6); rc.closePath(); rc.fill();
+      $('hint').style.opacity = (!isTouch && !locked) ? 1 : 0;
+    } else { $('hint').style.opacity = 0; }
 
     renderer.render(scene, camera);
   }
