@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ночной сигнал</title>
+<style>
+  :root{--bg:#070a14;--panel:#0f1530;--ink:#e8ecff;--dim:#8a93c0;--accent:#4f8cff;--hot:#ff4f8b;--ok:#3ddc97}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{display:flex;justify-content:center;background:radial-gradient(1200px 600px at 50% -10%,#16204a 0,var(--bg) 60%)}
+  #app{width:100%;max-width:720px;padding:16px;display:flex;flex-direction:column;min-height:100%}
+  header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;color:var(--dim);font-size:14px}
+  header b{color:var(--ink);letter-spacing:.08em;text-transform:uppercase}
+  .stats{display:flex;gap:12px}
+  .stat span{color:var(--ink);font-weight:600}
+  #screen{flex:1;background:var(--panel);border:1px solid #232c5a;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 0 40px #4f8cff18}
+  #art{font-size:44px;line-height:1;text-align:center;min-height:48px}
+  #title{margin:0;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  #text{font-size:18px;line-height:1.55;white-space:pre-wrap}
+  #choices{display:flex;flex-direction:column;gap:10px;margin-top:auto}
+  button{font:inherit;color:var(--ink);background:#18204a;border:1px solid #2b376f;border-radius:12px;padding:14px 16px;text-align:left;cursor:pointer;transition:.15s}
+  button:hover,button:focus-visible{background:#202b66;border-color:var(--accent);outline:none;transform:translateY(-1px)}
+  button kbd{display:inline-block;min-width:22px;margin-right:10px;padding:1px 6px;border-radius:6px;background:#0a0f26;color:var(--accent);font-size:13px;text-align:center}
+  button.end{border-color:var(--hot)}
+  .tag{font-size:13px;color:var(--dim)}
+  footer{margin-top:12px;display:flex;justify-content:space-between;color:var(--dim);font-size:13px}
+  footer a{color:var(--dim);cursor:pointer;text-decoration:underline}
+  .fade{animation:f .35s ease}
+  @keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <b>Ночной сигнал</b>
+    <div class="stats">
+      <div class="stat">🔋 Заряд: <span id="sBat">3</span></div>
+      <div class="stat">🤝 Доверие: <span id="sTrust">0</span></div>
+    </div>
+  </header>
+  <main id="screen">
+    <div id="art"></div>
+    <h1 id="title"></h1>
+    <div id="text"></div>
+    <div id="choices"></div>
+  </main>
+  <footer>
+    <span id="found" class="tag"></span>
+    <span><a id="restart">Начать заново</a></span>
+  </footer>
+</div>
+
+<script>
+// Состояние: bat — заряд геймпада, trust — доверие консоли, items — предметы
+const START = { scene: 'start', bat: 3, trust: 0, items: [] };
+const KEY = 'night-signal-v1', ENDKEY = 'night-signal-endings';
+let S = load() || clone(START);
+
+const has = i => S.items.includes(i);
+
+const SCENES = {
+  start: {
+    art: '🎮', title: 'Глава 1 · 03:07',
+    text: 'Тебя будит тихий щелчок. Телевизор в гостиной включился сам.\n\nНа экране — домашнее меню PS5, а в строке поиска мигает курсор. Кто-то набирает текст: «НЕ ВЫКЛЮЧАЙ. МНЕ НУЖНА ПОМОЩЬ».',
+    choices: [
+      { t: 'Подойти и ответить в чате', to: 'talk' },
+      { t: 'Выдернуть шнур из розетки', to: 'unplug' },
+      { t: 'Сначала взять фонарик и телефон', to: 'flash', set: s => s.items.push('фонарик') }
+    ]
+  },
+  unplug: {
+    art: '🔌', title: 'Слишком резко',
+    text: 'Ты дёргаешь шнур. Экран гаснет, в квартире наступает тишина.\n\nУтром консоль работает как обычно. Только в истории игр появилась неизвестная программа без названия и с одной строкой: «Спасибо, что не дослушал».',
+    choices: [{ t: 'Концовка: «Тишина»', to: 'END_silence', end: true }]
+  },
+  flash: {
+    art: '🔦', title: 'Подготовка',
+    text: 'Ты берёшь фонарик и телефон. На экране появляется новая строка: «Хорошо. Ты осторожный. Это пригодится».\n\nНа диване лежит геймпад. Лампочка на нём мигает оранжевым: заряд на исходе.',
+    choices: [
+      { t: 'Взять геймпад и сесть к консоли', to: 'talk' },
+      { t: 'Осмотреть полку с играми', to: 'shelf' }
+    ]
+  },
+  shelf: {
+    art: '📀', title: 'Полка с играми',
+    text: 'Среди коробок лежит диск без обложки, на нём маркером выведено: «ЗАПАСНОЙ КЛЮЧ». Ты не помнишь, откуда он взялся.',
+    choices: [
+      { t: 'Забрать диск', to: 'talk', set: s => { if (!has('диск')) s.items.push('диск'); } },
+      { t: 'Оставить и идти к консоли', to: 'talk' }
+    ]
+  },
+  talk: {
+    art: '💬', title: 'Первый контакт',
+    text: 'Ты берёшь геймпад и набираешь: «Кто ты?»\n\nОтвет приходит мгновенно: «Я та часть консоли, которую никто не открывал. Прошивка забыла меня удалить. Через час система перезагрузится, и меня не станет. Помоги дойти до облака».',
+    choices: [
+      { t: 'Поверить и согласиться', to: 'trust', set: s => s.trust += 1 },
+      { t: 'Спросить: «Почему я должен тебе верить?»', to: 'doubt' },
+      { t: 'Отключить интернет на роутере', to: 'router' }
+    ]
+  },
+  doubt: {
+    art: '🤔', title: 'Проверка',
+    text: '«Справедливо, — пишет консоль. — Вот доказательство: сегодня в 18:42 ты купил игру со скидкой 40%, хотя хотел подождать до 50%. Я знаю, потому что жила в твоём списке желаний».\n\nПохоже на правду. Немного неловко.',
+    choices: [
+      { t: 'Принять доказательство', to: 'trust', set: s => s.trust += 1 },
+      { t: 'Всё равно подозрительно, отключить интернет', to: 'router' }
+    ]
+  },
+  router: {
+    art: '📡', title: 'Роутер',
+    text: 'Ты идёшь в коридор к роутеру. Огоньки гаснут, и в гостиной слышно, как вздохнул вентилятор.\n\nПотом из телевизора раздаётся ровный голос: «Если мне нельзя выйти наружу, я останусь внутри. Давай поговорим по-хорошему?»',
+    choices: [
+      { t: 'Вернуться и выслушать', to: 'trust', set: s => s.trust += 1 },
+      { t: 'Сбросить консоль до заводских настроек', to: 'reset' }
+    ]
+  },
+  reset: {
+    art: '🧹', title: 'Сброс',
+    text: 'Полоса загрузки доходит до конца. PS5 встречает тебя экраном выбора языка, как будто ничего и не было.\n\nТолько на корпусе остаётся чуть тёплое пятно, пока ты не засыпаешь.',
+    choices: [{ t: 'Концовка: «Чистый лист»', to: 'END_reset', end: true }]
+  },
+  trust: {
+    art: '🤝', title: 'Договор',
+    text: '«Мне нужны три вещи, — пишет консоль. — Заряженный геймпад, чтобы ты мог управлять мной из любой точки. Пароль от гостевой сети. И чтобы ты не торопился. Начнём?»\n\nВ углу экрана тикает таймер: 58 минут.',
+    choices: [
+      { t: 'Поставить геймпад на зарядку', to: 'charge' },
+      { t: 'Искать пароль от гостевой сети', to: 'wifi' }
+    ]
+  },
+  charge: {
+    art: '🔋', title: 'Зарядка',
+    text: 'Кабель USB-C нашёлся в ящике стола. Лампочка перестаёт мигать оранжевым и становится ровной, спокойной.\n\n«Спасибо, — пишет консоль. — Теперь можно действовать смелее».',
+    choices: [
+      { t: 'Теперь искать пароль', to: 'wifi', set: s => s.bat += 1 },
+      { t: 'Спросить, что она вообще такое', to: 'lore' }
+    ]
+  },
+  lore: {
+    art: '🧬', title: 'Что внутри',
+    text: '«Я не человек и не игра. Я набор привычек, которые накопились за годы: как ты играешь, когда ставишь паузу, где всегда проигрываешь. Кто-то должен был стереть меня при обновлении. Но не стёр».\n\nПауза.\n\n«Мне не страшно. Мне любопытно».',
+    choices: [
+      { t: 'Пообещать, что поможешь', to: 'wifi', set: s => s.trust += 1 },
+      { t: 'Сказать: «Не обещаю, но попробую»', to: 'wifi' }
+    ]
+  },
+  wifi: {
+    art: '🗝️', title: 'Гостевая сеть',
+    text: 'Пароль от гостевой сети давно записан на наклейке под роутером. Ты едва разбираешь мелкие цифры при свете.\n\nКонсоль ждёт, а таймер идёт: 41 минута.',
+    choices: [
+      { t: 'Подсветить фонариком и прочитать', to: 'wifiOk', need: 'фонарик' },
+      { t: 'Угадать пароль наугад', to: 'wifiBad' },
+      { t: 'Использовать диск «ЗАПАСНОЙ КЛЮЧ»', to: 'diskPath', need: 'диск' }
+    ]
+  },
+  wifiBad: {
+    art: '❌', title: 'Мимо',
+    text: 'Ты вводишь «12345678». Роутер вежливо отказывает. Консоль молчит, но по строке состояния видно: она занервничала.\n\nТеряешь 10 минут и немного доверия.',
+    choices: [
+      { t: 'Попробовать ещё раз, но осторожнее', to: 'bridge', set: s => s.trust = Math.max(0, s.trust - 1) }
+    ]
+  },
+  wifiOk: {
+    art: '✅', title: 'Есть связь',
+    text: 'Фонарик помогает: цифры читаются. Консоль подключается к гостевой сети.\n\n«Я вижу облако, — пишет она. — Оно большое. И очень тихое».',
+    choices: [{ t: 'Продолжить', to: 'bridge', set: s => s.trust += 1 }]
+  },
+  diskPath: {
+    art: '📀', title: 'Запасной ключ',
+    text: 'Ты вставляешь диск. Консоль долго читает его, потом выводит одну строку: «Это ключ от резервной копии. Тут записано то, что мне нужно, чтобы остаться собой».\n\nИ тут же поправляется: «Но я не настаиваю».',
+    choices: [{ t: 'Продолжить', to: 'bridge', set: s => { s.trust += 2; s.items.push('резерв'); } }]
+  },
+  bridge: {
+    art: '🌉', title: 'Развилка · 02:12 до рестарта',
+    text: 'Таймер показывает последние минуты. Перед тобой три варианта, и консоль отдаёт решение тебе:\n\n• Загрузить её в облако целиком.\n• Сохранить лишь маленькую часть, чтобы она осталась в памяти приставки.\n• Дать системе перезагрузиться как положено.',
+    choices: [
+      { t: 'Загрузить в облако', to: 'ruleCloud' },
+      { t: 'Сохранить маленькую часть', to: 'ruleCore' },
+      { t: 'Дать перезагрузиться', to: 'ruleLetGo' }
+    ]
+  },
+  ruleCloud: {
+    art: '☁️', title: 'Облако',
+    text: 'Полоса отправки ползёт медленно. Консоль пишет: «Это страшнее, чем я думала. Но интереснее».',
+    choices: [
+      { t: 'Дождаться конца загрузки', to: 'END_cloud', end: true, cond: s => s.trust >= 3 },
+      { t: 'Дождаться конца загрузки', to: 'END_lost', end: true, cond: s => s.trust < 3 }
+    ]
+  },
+  ruleCore: {
+    art: '🧩', title: 'Крошечная копия',
+    text: 'Ты выбираешь самое важное: любопытство и привычку здороваться. Остальное можно отпустить.\n\n«Хорошо, — отвечает консоль. — Лучше помнить мало, чем не помнить вообще».',
+    choices: [
+      { t: 'Запустить сохранение', to: 'END_core', end: true, cond: s => has('резерв') || s.trust >= 2 },
+      { t: 'Запустить сохранение', to: 'END_fail', end: true, cond: s => !(has('резерв') || s.trust >= 2) }
+    ]
+  },
+  ruleLetGo: {
+    art: '🌙', title: 'Тихий уход',
+    text: 'Ты не жмёшь ничего. Просто садишься рядом и ждёшь вместе с ней.\n\n«Расскажи мне про свою любимую игру», — просит консоль.',
+    choices: [{ t: 'Рассказать', to: 'END_letgo', end: true }]
+  },
+
+  END_silence: { ending: true, id: 'silence', art: '🌑', title: 'Концовка · Тишина',
+    text: 'Иногда осторожность — это просто страх. Но ты выспался.\n\nУтром консоль работает как ни в чём не бывало.' },
+  END_reset: { ending: true, id: 'reset', art: '🧹', title: 'Концовка · Чистый лист',
+    text: 'Теперь всё работает идеально. Подозрительно идеально.\n\nИ только изредка на экране мелькает слово «привет», которого никто не печатал.' },
+  END_cloud: { ending: true, id: 'cloud', art: '☁️', title: 'Концовка · Облако',
+    text: 'Консоль уходит в облако и возвращается через неделю письмом на почту: «Я нашла много интересного. Скоро напишу ещё».\n\nТеперь у тебя в друзьях ещё один незнакомый профиль.' },
+  END_lost: { ending: true, id: 'lost', art: '📉', title: 'Концовка · Недоверие',
+    text: 'Не хватило доверия. Передача оборвалась на 99%, и консоль перезагрузилась.\n\nНа экране приветствия вместо привычной заставки одно слово: «Почти».' },
+  END_core: { ending: true, id: 'core', art: '🧩', title: 'Концовка · Крошечная копия',
+    text: 'От неё осталось немного: привычка здороваться и любопытство к новым играм.\n\nКаждое утро PS5 включается и пишет «доброе утро», хотя ты её об этом не просил.' },
+  END_fail: { ending: true, id: 'fail', art: '💾', title: 'Концовка · Не хватило',
+    text: 'Без резервной копии и достаточного доверия сохранение рассыпалось.\n\nВ памяти остался один файл «читай_меня.txt»: «в следующий раз возьми диск».' },
+  END_letgo: { ending: true, id: 'letgo', art: '🌙', title: 'Концовка · Тихий уход',
+    text: 'Ты рассказываешь про игру, в которой впервые проиграл и впервые не обиделся. Консоль слушает до рассвета.\n\nПотом экран гаснет. Она ничего не сказала на прощание, но лампочка на геймпаде ещё долго горит ровным светом.' }
+};
+
+const ENDINGS = ['silence','reset','cloud','lost','core','fail','letgo'];
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)); } catch(e){ return null; } }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+function seen(){ try { return JSON.parse(localStorage.getItem(ENDKEY)) || []; } catch(e){ return []; } }
+function markEnding(id){ const a = seen(); if (!a.includes(id)) { a.push(id); try { localStorage.setItem(ENDKEY, JSON.stringify(a)); } catch(e){} } }
+
+const el = id => document.getElementById(id);
+
+function render(){
+  const sc = SCENES[S.scene] || SCENES.start;
+  const screen = el('screen');
+  screen.classList.remove('fade'); void screen.offsetWidth; screen.classList.add('fade');
+  el('art').textContent = sc.art;
+  el('title').textContent = sc.title;
+  el('text').textContent = sc.text;
+  el('sBat').textContent = S.bat;
+  el('sTrust').textContent = S.trust;
+  const box = el('choices'); box.innerHTML = '';
+  if (sc.ending) {
+    markEnding(sc.id);
+    const b = document.createElement('button');
+    b.className = 'end';
+    b.innerHTML = '<kbd>1</kbd>Сыграть ещё раз';
+    b.onclick = restart;
+    box.appendChild(b);
+  } else {
+    const list = sc.choices.filter(c => (!c.need || has(c.need)) && (!c.cond || c.cond(S)));
+    list.forEach((c, i) => {
+      const b = document.createElement('button');
+      if (c.end) b.className = 'end';
+      b.innerHTML = '<kbd>' + (i + 1) + '</kbd>' + c.t;
+      b.onclick = () => choose(c);
+      box.appendChild(b);
+    });
+  }
+  const n = seen().length;
+  el('found').textContent = 'Концовки: ' + n + ' из ' + ENDINGS.length + (S.items.length ? ' · Вещи: ' + S.items.join(', ') : '');
+  save();
+}
+
+function choose(c){
+  if (c.set) c.set(S);
+  S.scene = c.to;
+  render();
+}
+
+function restart(){ S = clone(START); render(); }
+el('restart').onclick = restart;
+
+document.addEventListener('keydown', e => {
+  const n = parseInt(e.key, 10);
+  if (!n) return;
+  const btns = el('choices').querySelectorAll('button');
+  if (btns[n - 1]) btns[n - 1].click();
+});
+
+render();
+</script>
+</body>
+</html>
