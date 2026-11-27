@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Ночной сигнал 3D</title>
+<style>
+  :root{--bg:#070a14;--panel:#0f1530;--ink:#e8ecff;--dim:#8a93c0;--accent:#4f8cff;--hot:#ff4f8b;--ok:#3ddc97;color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  #hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;gap:12px;padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-weight:600;font-size:18px;pointer-events:none;text-shadow:0 2px 8px #000}
+  #hud span{color:var(--dim);font-weight:400;font-size:13px;display:block;letter-spacing:.08em;text-transform:uppercase}
+  #lives{color:var(--hot);letter-spacing:.1em}
+  #bar{position:fixed;left:50%;transform:translateX(-50%);top:max(64px,calc(env(safe-area-inset-top,0px) + 52px));width:min(320px,60vw);height:8px;border-radius:4px;background:#1a2350;overflow:hidden;pointer-events:none}
+  #fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--ok));transition:width .25s}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:#070a14cc}
+  .card{max-width:440px;width:100%;background:var(--panel);border:1px solid #232c5a;border-radius:16px;padding:24px;box-shadow:0 0 60px #4f8cff22}
+  .card h1{margin:0 0 4px;font-size:26px}
+  .card .sub{color:var(--accent);font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px}
+  .card p{line-height:1.55;margin:0 0 12px;color:#c9d0f5}
+  .card kbd{background:#0a0f26;border-radius:6px;padding:1px 7px;color:var(--accent);font:inherit;font-size:13px}
+  button{font:inherit;color:#fff;background:var(--accent);border:0;border-radius:12px;padding:14px 20px;font-weight:600;cursor:pointer;width:100%}
+  button:hover,button:focus-visible{filter:brightness(1.15);outline:none}
+  #dash{position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:max(28px,calc(env(safe-area-inset-bottom,0px) + 20px));width:84px;height:84px;border-radius:50%;padding:0;background:#4f8cff55;border:2px solid var(--accent);display:none}
+  #dash.cool{opacity:.35}
+  #stick{position:fixed;width:120px;height:120px;border-radius:50%;border:2px solid #4f8cff88;background:#4f8cff18;display:none;pointer-events:none}
+  #knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#4f8cffaa}
+  .touch #dash{display:block}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">
+  <div><span>Жизни</span><div id="lives">♥♥♥</div></div>
+  <div style="text-align:center"><span>Фрагменты</span><div id="count">0 / 12</div></div>
+  <div style="text-align:right"><span>Время</span><div id="time">0.0</div></div>
+</div>
+<div id="bar"><div id="fill"></div></div>
+<div id="stick"><div id="knob"></div></div>
+<button id="dash" aria-label="Рывок">РЫВОК</button>
+
+<div id="start" class="overlay">
+  <div class="card">
+    <div class="sub">PS5 · 03:07</div>
+    <h1>Ночной сигнал 3D</h1>
+    <p>Ты — обрывок кода внутри забытой прошивки. Собери 12 зелёных фрагментов и перенеси их в башню-консоль в центре комнаты, пока глюки не стёрли тебя.</p>
+    <p>Движение: <kbd>W A S D</kbd> или стрелки. Рывок: <kbd>Пробел</kbd>. На телефоне: тяни палец по левой половине экрана и жми «РЫВОК».</p>
+    <button id="go">Играть</button>
+  </div>
+</div>
+<div id="end" class="overlay hidden">
+  <div class="card">
+    <div class="sub" id="endSub"></div>
+    <h1 id="endTitle"></h1>
+    <p id="endText"></p>
+    <button id="again">Ещё раз</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const ARENA = 24, NEED = 12;
+  const $ = id => document.getElementById(id);
+  const stage = $('stage');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x070a14);
+  scene.fog = new THREE.Fog(0x070a14, 25, 70);
+  const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 200);
+
+  scene.add(new THREE.AmbientLight(0x6070b0, 0.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.5);
+  sun.position.set(10, 20, 8);
+  scene.add(sun);
+
+  // Пол и сетка
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA * 2, ARENA * 2),
+    new THREE.MeshStandardMaterial({ color: 0x0b1030, roughness: 0.9 }));
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+  const grid = new THREE.GridHelper(ARENA * 2, ARENA, 0x4f8cff, 0x1a2a66);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+  // Стены
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x1b2a6e, emissive: 0x2a47d0, emissiveIntensity: 0.6 });
+  [[0, -ARENA, ARENA * 2 + 1, 1], [0, ARENA, ARENA * 2 + 1, 1], [-ARENA, 0, 1, ARENA * 2 + 1], [ARENA, 0, 1, ARENA * 2 + 1]]
+    .forEach(([x, z, w, d]) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.4, d), wallMat);
+      m.position.set(x, 0.7, z);
+      scene.add(m);
+    });
+
+  // Башня-консоль
+  const tower = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 7, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0xe8ecff, roughness: 0.35 }));
+  body.position.y = 3.5;
+  tower.add(body);
+  const core = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6.4, 1.3),
+    new THREE.MeshStandardMaterial({ color: 0x4f8cff, emissive: 0x4f8cff, emissiveIntensity: 1.2 }));
+  core.position.y = 0.2;
+  core.scale.y = 0.01;
+  tower.add(core);
+  const towerLight = new THREE.PointLight(0x4f8cff, 1.2, 22);
+  towerLight.position.y = 5;
+  tower.add(towerLight);
+  scene.add(tower);
+
+  // Игрок
+  const player = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 24),
+    new THREE.MeshStandardMaterial({ color: 0x66e0ff, emissive: 0x22b8ff, emissiveIntensity: 1 }));
+  player.position.y = 0.7;
+  scene.add(player);
+  const glow = new THREE.PointLight(0x66e0ff, 1.4, 14);
+  player.add(glow);
+
+  // Фрагменты и враги
+  const shardGeo = new THREE.OctahedronGeometry(0.5);
+  const shardMat = new THREE.MeshStandardMaterial({ color: 0x3ddc97, emissive: 0x3ddc97, emissiveIntensity: 1.1 });
+  const enemyGeo = new THREE.BoxGeometry(1.3, 1.3, 1.3);
+  const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff4f8b, emissive: 0xff2f70, emissiveIntensity: 0.9 });
+
+  let shard, enemies, vel, dashT, dashCd, dashDir, invul, lives, got, elapsed, state = 'menu';
+  const input = { x: 0, z: 0 };
+  const keys = {};
+
+  function rnd(a, b){ return a + Math.random() * (b - a); }
+  function farPoint(minDist){
+    for (let i = 0; i < 30; i++) {
+      const x = rnd(-ARENA + 2, ARENA - 2), z = rnd(-ARENA + 2, ARENA - 2);
+      if (Math.hypot(x - player.position.x, z - player.position.z) > minDist && Math.hypot(x, z) > 4) return { x, z };
+    }
+    return { x: ARENA - 3, z: ARENA - 3 };
+  }
+  function placeShard(){
+    const p = farPoint(6);
+    shard.position.set(p.x, 0.9, p.z);
+  }
+  function addEnemy(){
+    const m = new THREE.Mesh(enemyGeo, enemyMat);
+    const p = farPoint(14);
+    m.position.set(p.x, 0.7, p.z);
+    m.userData.ph = Math.random() * 6;
+    scene.add(m);
+    enemies.push(m);
+  }
+  function resetGame(){
+    if (enemies) enemies.forEach(e => scene.remove(e));
+    if (!shard) { shard = new THREE.Mesh(shardGeo, shardMat); scene.add(shard); }
+    enemies = [];
+    player.position.set(0, 0.7, 10);
+    vel = new THREE.Vector3();
+    dashT = 0; dashCd = 0; dashDir = new THREE.Vector3(0, 0, -1);
+    invul = 0; lives = 3; got = 0; elapsed = 0;
+    core.scale.y = 0.01;
+    placeShard();
+    for (let i = 0; i < 3; i++) addEnemy();
+    camera.position.set(0, 16, 24);
+    updateHud();
+  }
+
+  // Звук
+  let actx = null;
+  function beep(freq, dur, type, vol){
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.value = vol || 0.08;
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function updateHud(){
+    $('lives').textContent = '♥'.repeat(Math.max(lives, 0)) + '·'.repeat(Math.max(3 - lives, 0));
+    $('count').textContent = got + ' / ' + NEED;
+    $('fill').style.width = (got / NEED * 100) + '%';
+  }
+
+  function start(){
+    resetGame();
+    $('start').classList.add('hidden');
+    $('end').classList.add('hidden');
+    state = 'play';
+    beep(440, 0.15);
+  }
+  function finish(win){
+    state = 'over';
+    let best = null;
+    if (win) {
+      try {
+        best = parseFloat(localStorage.getItem('ns3d-best'));
+        if (!(best <= elapsed)) { best = elapsed; localStorage.setItem('ns3d-best', String(best)); }
+      } catch (e) {}
+    }
+    $('endSub').textContent = win ? 'Загрузка завершена' : 'Сигнал потерян';
+    $('endTitle').textContent = win ? 'Ты в облаке' : 'Тебя стёрли';
+    $('endText').textContent = win
+      ? 'Время: ' + elapsed.toFixed(1) + ' с' + (best ? '. Лучшее: ' + best.toFixed(1) + ' с.' : '.')
+      : 'Собрано ' + got + ' из ' + NEED + ' фрагментов. Глюки быстрее, чем кажутся. Используй рывок.';
+    $('end').classList.remove('hidden');
+    beep(win ? 880 : 150, 0.5, win ? 'sine' : 'sawtooth', 0.1);
+  }
+
+  function dash(){
+    if (state !== 'play' || dashCd > 0) return;
+    const d = new THREE.Vector3(input.x, 0, input.z);
+    if (d.lengthSq() < 0.01) d.copy(dashDir);
+    dashDir.copy(d).normalize();
+    dashT = 0.18; dashCd = 1.1;
+    beep(300, 0.12, 'square', 0.04);
+  }
+
+  // Ввод
+  function readKeys(){
+    if (state !== 'play') return;
+    if (touch.active) return;
+    const x = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+    const z = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0);
+    const l = Math.hypot(x, z) || 1;
+    input.x = x / l; input.z = z / l;
+  }
+  addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space') { e.preventDefault(); if (state === 'play') dash(); else if (state !== 'play' && !e.repeat) start(); }
+    if (e.code === 'Enter' && state !== 'play') start();
+  });
+  addEventListener('keyup', e => { keys[e.code] = false; });
+
+  const touch = { active: false, id: null, ox: 0, oy: 0 };
+  const stick = $('stick'), knob = $('knob');
+  if (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window) document.body.classList.add('touch');
+  stage.addEventListener('touchstart', e => {
+    for (const t of e.changedTouches) {
+      if (!touch.active && t.clientX < innerWidth * 0.6) {
+        touch.active = true; touch.id = t.identifier; touch.ox = t.clientX; touch.oy = t.clientY;
+        stick.style.display = 'block';
+        stick.style.left = (t.clientX - 60) + 'px'; stick.style.top = (t.clientY - 60) + 'px';
+        knob.style.transform = 'translate(0,0)';
+      }
+    }
+  }, { passive: true });
+  stage.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier !== touch.id) continue;
+      let dx = t.clientX - touch.ox, dy = t.clientY - touch.oy;
+      const l = Math.hypot(dx, dy), max = 50;
+      if (l > max) { dx = dx / l * max; dy = dy / l * max; }
+      knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      input.x = dx / max; input.z = dy / max;
+    }
+  }, { passive: true });
+  function endTouch(e){
+    for (const t of e.changedTouches) if (t.identifier === touch.id) {
+      touch.active = false; stick.style.display = 'none'; input.x = 0; input.z = 0;
+    }
+  }
+  stage.addEventListener('touchend', endTouch);
+  stage.addEventListener('touchcancel', endTouch);
+  $('dash').addEventListener('touchstart', e => { e.preventDefault(); dash(); }, { passive: false });
+  $('dash').addEventListener('mousedown', dash);
+  $('go').onclick = start;
+  $('again').onclick = start;
+
+  function resize(){
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // Игровой цикл
+  const clock = new THREE.Clock();
+  const tmp = new THREE.Vector3();
+  function tick(){
+    requestAnimationFrame(tick);
+    const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+
+    shard && (shard.rotation.y += dt * 2, shard.position.y = 0.9 + Math.sin(t * 3) * 0.2);
+    tower.rotation.y = Math.sin(t * 0.6) * 0.15;
+
+    if (state === 'play') {
+      elapsed += dt;
+      readKeys();
+      const speed = 9;
+      if (dashT > 0) {
+        dashT -= dt;
+        vel.copy(dashDir).multiplyScalar(26);
+      } else {
+        tmp.set(input.x * speed, 0, input.z * speed);
+        vel.lerp(tmp, Math.min(1, dt * 10));
+      }
+      dashCd = Math.max(0, dashCd - dt);
+      $('dash').classList.toggle('cool', dashCd > 0);
+      player.position.addScaledVector(vel, dt);
+      const lim = ARENA - 1.2;
+      player.position.x = Math.max(-lim, Math.min(lim, player.position.x));
+      player.position.z = Math.max(-lim, Math.min(lim, player.position.z));
+      player.rotation.x += vel.z * dt * 0.8;
+      player.rotation.z -= vel.x * dt * 0.8;
+
+      // Сбор
+      if (Math.hypot(player.position.x - shard.position.x, player.position.z - shard.position.z) < 1.3) {
+        got++;
+        core.scale.y = Math.max(0.01, got / NEED);
+        core.position.y = 0.2 + 3.2 * (got / NEED);
+        towerLight.intensity = 1.2 + got * 0.25;
+        beep(660 + got * 40, 0.18, 'triangle');
+        if (got % 4 === 0 && got < NEED) addEnemy();
+        if (got >= NEED) { updateHud(); finish(true); }
+        else placeShard();
+        updateHud();
+      }
+
+      // Враги
+      invul = Math.max(0, invul - dt);
+      player.visible = invul <= 0 || Math.floor(t * 12) % 2 === 0;
+      const es = 3.4 + got * 0.28;
+      for (const e of enemies) {
+        const dx = player.position.x - e.position.x, dz = player.position.z - e.position.z;
+        const d = Math.hypot(dx, dz) || 1;
+        const wob = Math.sin(t * 3 + e.userData.ph) * 0.6;
+        e.position.x += (dx / d + (-dz / d) * wob * 0.5) * es * dt;
+        e.position.z += (dz / d + (dx / d) * wob * 0.5) * es * dt;
+        e.rotation.x += dt * 2; e.rotation.y += dt * 3;
+        e.scale.setScalar(1 + Math.sin(t * 20 + e.userData.ph) * 0.06);
+        if (invul <= 0 && state === 'play' && d < 1.2) {
+          lives--; invul = 1.6;
+          const p = farPoint(14);
+          e.position.set(p.x, 0.7, p.z);
+          vel.set(0, 0, 0);
+          beep(120, 0.3, 'sawtooth', 0.1);
+          updateHud();
+          if (lives <= 0) finish(false);
+        }
+      }
+      $('time').textContent = elapsed.toFixed(1);
+    }
+
+    // Камера
+    tmp.set(player.position.x * 0.9, 15, player.position.z + 13);
+    camera.position.lerp(tmp, Math.min(1, dt * 4));
+    camera.lookAt(player.position.x * 0.9, 0, player.position.z - 1);
+
+    renderer.render(scene, camera);
+  }
+  resetGame();
+  tick();
+})();
+</script>
+</body>
+</html>
