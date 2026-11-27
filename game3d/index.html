@@ -100,15 +100,34 @@
       scene.add(m);
     });
 
-  // Башня-консоль
+  // Башня-консоль: две белые изогнутые панели, чёрная середина и светящаяся полоса заряда
   const tower = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 7, 1.2),
-    new THREE.MeshStandardMaterial({ color: 0xe8ecff, roughness: 0.35 }));
-  body.position.y = 3.5;
-  tower.add(body);
-  const core = new THREE.Mesh(new THREE.BoxGeometry(0.5, 6.4, 1.3),
-    new THREE.MeshStandardMaterial({ color: 0x4f8cff, emissive: 0x4f8cff, emissiveIntensity: 1.2 }));
-  core.position.y = 0.2;
+  function plateShape(w0, w1, h){
+    const s = new THREE.Shape();
+    s.moveTo(-w0, 0); s.lineTo(w0, 0);
+    s.quadraticCurveTo(w0 * 0.78, h * 0.5, w1, h);
+    s.lineTo(-w1, h);
+    s.quadraticCurveTo(-w0 * 0.78, h * 0.5, -w0, 0);
+    return s;
+  }
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf1f4ff, roughness: 0.3, metalness: 0.05 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x0a0c14, roughness: 0.5 });
+  const plateOpts = { depth: 0.3, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3, curveSegments: 16 };
+  [-1, 1].forEach(side => {
+    const p = new THREE.Mesh(new THREE.ExtrudeGeometry(plateShape(1.5, 0.7, 7.2), plateOpts), whiteMat);
+    p.position.z = side > 0 ? 0.5 : -0.8;
+    tower.add(p);
+  });
+  const mid = new THREE.Mesh(new THREE.ExtrudeGeometry(plateShape(1.3, 0.55, 7.0),
+    { depth: 1.0, bevelEnabled: false, curveSegments: 16 }), blackMat);
+  mid.position.set(0, 0.05, -0.5);
+  tower.add(mid);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.25, 2.2), blackMat);
+  base.position.y = 0.12;
+  tower.add(base);
+  const core = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6.4, 1.9),
+    new THREE.MeshStandardMaterial({ color: 0x4f8cff, emissive: 0x4f8cff, emissiveIntensity: 1.4 }));
+  core.position.y = 0.4;
   core.scale.y = 0.01;
   tower.add(core);
   const towerLight = new THREE.PointLight(0x4f8cff, 1.2, 22);
@@ -116,19 +135,104 @@
   tower.add(towerLight);
   scene.add(tower);
 
-  // Игрок
-  const player = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 24),
-    new THREE.MeshStandardMaterial({ color: 0x66e0ff, emissive: 0x22b8ff, emissiveIntensity: 1 }));
+  // Игрок: геймпад DualSense. Перёд (сенсорная панель) смотрит в -z
+  const player = new THREE.Group();
+  const pad = new THREE.Group();
+  player.add(pad);
+  const sph = (r, sx, sy, sz, mat, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), mat);
+    m.scale.set(sx, sy, sz); m.position.set(x, y, z); pad.add(m); return m;
+  };
+  const box = (w, h, d, mat, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z); pad.add(m); return m;
+  };
+  const padWhite = new THREE.MeshStandardMaterial({ color: 0xf4f6ff, roughness: 0.35 });
+  const padBlack = new THREE.MeshStandardMaterial({ color: 0x151824, roughness: 0.45 });
+  const padLight = new THREE.MeshStandardMaterial({ color: 0x66e0ff, emissive: 0x22b8ff, emissiveIntensity: 1.6 });
+  sph(0.5, 1.7, 0.45, 1.0, padWhite, 0, 0, 0);
+  sph(0.5, 0.5, 0.5, 1.1, padWhite, -0.78, -0.08, 0.4).rotation.y = 0.35;
+  sph(0.5, 0.5, 0.5, 1.1, padWhite, 0.78, -0.08, 0.4).rotation.y = -0.35;
+  sph(0.5, 1.3, 0.3, 0.72, padBlack, 0, 0.14, -0.02);
+  box(0.62, 0.05, 0.3, new THREE.MeshStandardMaterial({ color: 0xcfd6f5, roughness: 0.3 }), 0, 0.33, -0.15);
+  box(0.04, 0.05, 0.32, padLight, -0.35, 0.34, -0.15);
+  box(0.04, 0.05, 0.32, padLight, 0.35, 0.34, -0.15);
+  // D-pad слева и четыре кнопки справа
+  box(0.28, 0.05, 0.08, padWhite, -0.62, 0.32, -0.05);
+  box(0.08, 0.05, 0.28, padWhite, -0.62, 0.32, -0.05);
+  [[0.62, -0.2, 0xff6aa0], [0.82, -0.05, 0x66a3ff], [0.62, 0.1, 0x7be0a8], [0.42, -0.05, 0xf5c04a]].forEach(([x, z, c]) => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8),
+      new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.6 }));
+    b.position.set(x, 0.33, z); pad.add(b);
+  });
+  // Стики
+  [-0.3, 0.3].forEach(x => {
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.1, 16), padBlack);
+    st.position.set(x, 0.3, 0.3); pad.add(st);
+  });
+  pad.scale.setScalar(1.6);
+  const glow = new THREE.PointLight(0x66e0ff, 1.4, 14);
+  glow.position.y = 0.8;
+  player.add(glow);
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(1.3, 24),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 }));
+  blob.rotation.x = -Math.PI / 2;
+  blob.position.y = -0.68;
+  player.add(blob);
   player.position.y = 0.7;
   scene.add(player);
-  const glow = new THREE.PointLight(0x66e0ff, 1.4, 14);
-  player.add(glow);
 
-  // Фрагменты и враги
+  // Фрагмент-кристалл
   const shardGeo = new THREE.OctahedronGeometry(0.5);
   const shardMat = new THREE.MeshStandardMaterial({ color: 0x3ddc97, emissive: 0x3ddc97, emissiveIntensity: 1.1 });
-  const enemyGeo = new THREE.BoxGeometry(1.3, 1.3, 1.3);
+  function makeShard(){
+    const g = new THREE.Group();
+    const c = new THREE.Mesh(shardGeo, shardMat);
+    c.scale.set(0.7, 1.3, 0.7);
+    g.add(c);
+    const w = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(0.85)),
+      new THREE.LineBasicMaterial({ color: 0xbfffe3, transparent: true, opacity: 0.55 }));
+    w.scale.set(0.8, 1.3, 0.8);
+    g.add(w);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.025, 8, 32),
+      new THREE.MeshBasicMaterial({ color: 0x3ddc97 }));
+    ring.rotation.x = Math.PI / 2;
+    ring.name = 'ring';
+    g.add(ring);
+    const l = new THREE.PointLight(0x3ddc97, 0.9, 7);
+    g.add(l);
+    return g;
+  }
+
+  // Враг: глючное существо с орбитальными осколками и глазами
+  const enemyGeo = new THREE.BoxGeometry(1, 1, 1);
   const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff4f8b, emissive: 0xff2f70, emissiveIntensity: 0.9 });
+  const coreMat = new THREE.MeshStandardMaterial({ color: 0x1d0a1c, roughness: 0.4 });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  function makeEnemy(){
+    const g = new THREE.Group();
+    const c = new THREE.Mesh(enemyGeo, coreMat);
+    c.scale.setScalar(0.95);
+    g.add(c);
+    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(enemyGeo),
+      new THREE.LineBasicMaterial({ color: 0xff4f8b })).clone());
+    g.children[1].scale.setScalar(1.0);
+    [-0.2, 0.2].forEach(x => {
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.05), eyeMat);
+      e.position.set(x, 0.1, 0.5);
+      g.add(e);
+    });
+    g.userData.parts = [];
+    for (let i = 0; i < 7; i++) {
+      const s = 0.2 + Math.random() * 0.25;
+      const m = new THREE.Mesh(enemyGeo, enemyMat);
+      m.scale.set(s, s, s);
+      m.userData = { r: 0.9 + Math.random() * 0.5, a: 1 + Math.random() * 2, ph: Math.random() * 6.28, y: (Math.random() - 0.5) * 1.2 };
+      g.add(m);
+      g.userData.parts.push(m);
+    }
+    return g;
+  }
 
   let shard, enemies, vel, dashT, dashCd, dashDir, invul, lives, got, elapsed, state = 'menu';
   const input = { x: 0, z: 0 };
@@ -147,7 +251,7 @@
     shard.position.set(p.x, 0.9, p.z);
   }
   function addEnemy(){
-    const m = new THREE.Mesh(enemyGeo, enemyMat);
+    const m = makeEnemy();
     const p = farPoint(14);
     m.position.set(p.x, 0.7, p.z);
     m.userData.ph = Math.random() * 6;
@@ -156,7 +260,7 @@
   }
   function resetGame(){
     if (enemies) enemies.forEach(e => scene.remove(e));
-    if (!shard) { shard = new THREE.Mesh(shardGeo, shardMat); scene.add(shard); }
+    if (!shard) { shard = makeShard(); scene.add(shard); }
     enemies = [];
     player.position.set(0, 0.7, 10);
     vel = new THREE.Vector3();
@@ -290,8 +394,13 @@
     requestAnimationFrame(tick);
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
 
-    shard && (shard.rotation.y += dt * 2, shard.position.y = 0.9 + Math.sin(t * 3) * 0.2);
-    tower.rotation.y = Math.sin(t * 0.6) * 0.15;
+    if (shard) {
+      shard.rotation.y += dt * 2;
+      shard.position.y = 1.0 + Math.sin(t * 3) * 0.2;
+      const r = shard.getObjectByName('ring');
+      if (r) { r.rotation.z += dt * 2.5; r.rotation.x = Math.PI / 2 + Math.sin(t * 2) * 0.4; }
+    }
+    tower.rotation.y = 0.75 + Math.sin(t * 0.6) * 0.15;
 
     if (state === 'play') {
       elapsed += dt;
@@ -310,8 +419,21 @@
       const lim = ARENA - 1.2;
       player.position.x = Math.max(-lim, Math.min(lim, player.position.x));
       player.position.z = Math.max(-lim, Math.min(lim, player.position.z));
-      player.rotation.x += vel.z * dt * 0.8;
-      player.rotation.z -= vel.x * dt * 0.8;
+      const td = Math.hypot(player.position.x, player.position.z);
+      if (td < 2.6) {
+        const k = 2.6 / (td || 1);
+        player.position.x = td ? player.position.x * k : 2.6;
+        player.position.z = td ? player.position.z * k : 0;
+      }
+      const spd = Math.hypot(vel.x, vel.z);
+      if (spd > 0.6) {
+        const target = Math.atan2(-vel.x, -vel.z);
+        let diff = target - player.rotation.y;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        player.rotation.y += diff * Math.min(1, dt * 12);
+      }
+      pad.rotation.x = -Math.min(spd, 26) * 0.022;
+      pad.position.y = 0.3 + Math.sin(t * 4) * 0.1;
 
       // Сбор
       if (Math.hypot(player.position.x - shard.position.x, player.position.z - shard.position.z) < 1.3) {
@@ -336,8 +458,16 @@
         const wob = Math.sin(t * 3 + e.userData.ph) * 0.6;
         e.position.x += (dx / d + (-dz / d) * wob * 0.5) * es * dt;
         e.position.z += (dz / d + (dx / d) * wob * 0.5) * es * dt;
-        e.rotation.x += dt * 2; e.rotation.y += dt * 3;
-        e.scale.setScalar(1 + Math.sin(t * 20 + e.userData.ph) * 0.06);
+        e.rotation.y = Math.atan2(dx, dz);
+        e.position.y = 0.8 + Math.sin(t * 5 + e.userData.ph) * 0.12;
+        const glitch = Math.random() < 0.03;
+        e.userData.parts.forEach(m => {
+          const u = m.userData, a = t * u.a + u.ph;
+          m.position.set(Math.cos(a) * u.r, u.y + Math.sin(a * 1.3) * 0.3, Math.sin(a) * u.r);
+          if (glitch) m.position.x += (Math.random() - 0.5) * 0.8;
+          m.rotation.x = a; m.rotation.y = a * 0.7;
+        });
+        e.scale.setScalar(1 + (glitch ? 0.12 : Math.sin(t * 20 + e.userData.ph) * 0.03));
         if (invul <= 0 && state === 'play' && d < 1.2) {
           lives--; invul = 1.6;
           const p = farPoint(14);
@@ -352,7 +482,7 @@
     }
 
     // Камера
-    tmp.set(player.position.x * 0.9, 15, player.position.z + 13);
+    tmp.set(player.position.x * 0.9, 13, player.position.z + 11);
     camera.position.lerp(tmp, Math.min(1, dt * 4));
     camera.lookAt(player.position.x * 0.9, 0, player.position.z - 1);
 
